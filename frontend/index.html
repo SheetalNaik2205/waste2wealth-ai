@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Waste2Wealth AI</title>
+<style>
+  body { font-family: Arial, sans-serif; background: #f4f7f4; margin: 0; padding: 0; color: #1a1a1a; }
+  header { background: #0f5132; color: white; padding: 20px; text-align: center; }
+  header h1 { margin: 0; font-size: 28px; }
+  header p { margin: 5px 0 0; font-size: 14px; opacity: 0.9; }
+  .container { max-width: 700px; margin: 30px auto; background: white; padding: 25px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+  input[type="file"] { display: block; margin: 15px 0; }
+  button { background: #0f5132; color: white; border: none; padding: 12px 20px; border-radius: 6px; cursor: pointer; font-size: 16px; }
+  button:disabled { background: #aaa; }
+  #preview { max-width: 100%; max-height: 250px; margin-top: 15px; border-radius: 8px; display: none; }
+  #results { margin-top: 25px; display: none; }
+  .card { background: #f0f7f0; border-left: 4px solid #0f5132; padding: 15px; border-radius: 6px; margin-bottom: 12px; }
+  .card h3 { margin: 0 0 8px; color: #0f5132; }
+  ul { margin: 5px 0 0 20px; padding: 0; }
+  #loading { display: none; margin-top: 15px; font-style: italic; color: #555; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>♻️ Waste2Wealth AI</h1>
+  <p>AI-Powered Industrial Waste Reuse Platform</p>
+</header>
+
+<div class="container">
+  <h2>Upload a Waste Photo</h2>
+  <p>Our AI will identify the waste, suggest reuse ideas, estimate its value, and calculate environmental impact.</p>
+
+  <input type="file" id="fileInput" accept="image/*">
+  <img id="preview">
+  <br>
+  <button id="analyzeBtn">Analyze Waste</button>
+
+  <div id="loading">🤖 AI is analyzing your image, please wait...</div>
+
+  <div id="results">
+    <div class="card"><h3>Waste Type</h3><p id="wasteType"></p></div>
+    <div class="card"><h3>Condition</h3><p id="condition"></p></div>
+    <div class="card"><h3>Quantity Note</h3><p id="quantityNote"></p></div>
+    <div class="card"><h3>♻️ Reuse Suggestions</h3><ul id="reuseList"></ul></div>
+    <div class="card"><h3>Recommended Recycling Method</h3><p id="recyclingMethod"></p></div>
+    <div class="card"><h3>💰 Estimated Price</h3><p id="price"></p></div>
+    <div class="card"><h3>🌍 Carbon Saved</h3><p id="carbon"></p></div>
+  </div>
+</div>
+
+<script>
+  const BACKEND_URL = "http://127.0.0.1:8000";
+
+  const fileInput = document.getElementById("fileInput");
+  const preview = document.getElementById("preview");
+  const analyzeBtn = document.getElementById("analyzeBtn");
+  const loading = document.getElementById("loading");
+  const results = document.getElementById("results");
+
+  fileInput.addEventListener("change", () => {
+    const file = fileInput.files[0];
+    if (file) {
+      preview.src = URL.createObjectURL(file);
+      preview.style.display = "block";
+      results.style.display = "none";
+    }
+  });
+
+  analyzeBtn.addEventListener("click", async () => {
+    const file = fileInput.files[0];
+    if (!file) { alert("Please choose an image first."); return; }
+
+    loading.style.display = "block";
+    results.style.display = "none";
+    analyzeBtn.disabled = true;
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const response = await fetch(`${BACKEND_URL}/analyze-waste`, { method: "POST", body: formData });
+      const data = await response.json();
+
+      if (data.error) {
+        alert("AI could not process this image. Please try another photo.");
+      } else {
+        document.getElementById("wasteType").innerText = data.waste_type;
+        document.getElementById("condition").innerText = data.condition;
+        document.getElementById("quantityNote").innerText = data.estimated_quantity_note;
+        document.getElementById("recyclingMethod").innerText = data.recommended_recycling_method;
+        document.getElementById("price").innerText = `₹${data.estimated_price_per_kg_inr} per kg`;
+        document.getElementById("carbon").innerText = `${data.carbon_saved_kg_per_kg_waste} kg CO₂ saved per kg of waste reused`;
+
+        const reuseList = document.getElementById("reuseList");
+        reuseList.innerHTML = "";
+        data.reuse_suggestions.forEach(item => {
+          const li = document.createElement("li");
+          li.innerText = item;
+          reuseList.appendChild(li);
+        });
+
+        results.style.display = "block";
+      }
+    } catch (err) {
+      alert("Something went wrong connecting to the AI backend. Make sure it's running.");
+      console.error(err);
+    } finally {
+      loading.style.display = "none";
+      analyzeBtn.disabled = false;
+    }
+  });
+</script>
+
+</body>
+</html>
